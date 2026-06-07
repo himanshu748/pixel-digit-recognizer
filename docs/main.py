@@ -7,16 +7,9 @@ import numpy as np
 from pyscript import window
 from pyscript.ffi import create_proxy
 
-# 1) Load the weights we trained offline (copied into the browser's virtual
-#    filesystem by pyscript.toml).
-with open("weights.json") as f:
-    W = json.load(f)
-
-W1 = np.array(W["W1"], dtype=np.float64)   # (784, 64)
-b1 = np.array(W["b1"], dtype=np.float64)   # (64,)
-W2 = np.array(W["W2"], dtype=np.float64)   # (64, 10)
-b2 = np.array(W["b2"], dtype=np.float64)   # (10,)
-ACC = float(W.get("test_accuracy", 0.0))
+# Filled in by boot() once the weights are loaded.
+W1 = b1 = W2 = b2 = None
+ACC = 0.0
 
 
 def relu(z):
@@ -68,9 +61,28 @@ def predict(pixels):
     })
 
 
-# 2) Hand the predict() function to JavaScript and announce we're ready.
-window.pyPredict = create_proxy(predict)
-try:
+def boot():
+    """Load the weights, expose predict() to JavaScript, and announce readiness."""
+    global W1, b1, W2, b2, ACC
+    with open("weights.json") as f:
+        W = json.load(f)
+    W1 = np.array(W["W1"], dtype=np.float64)   # (784, 64)
+    b1 = np.array(W["b1"], dtype=np.float64)   # (64,)
+    W2 = np.array(W["W2"], dtype=np.float64)   # (64, 10)
+    b2 = np.array(W["b2"], dtype=np.float64)   # (10,)
+    ACC = float(W.get("test_accuracy", 0.0))
+
+    window.pyPredict = create_proxy(predict)
     window.onPyReady(ACC)
-except Exception as err:  # pragma: no cover
-    print("onPyReady not found:", err)
+
+
+# If anything goes wrong starting up, tell the page so the user sees a real
+# error instead of a frozen "Booting…" screen.
+try:
+    boot()
+except Exception as err:
+    try:
+        window.onPyError(repr(err))
+    except Exception:
+        pass
+    raise

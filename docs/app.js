@@ -13,6 +13,23 @@ let lastX = 0, lastY = 0;
 let pyReady = false;
 let examples = null;
 
+/* ---------- loading feedback (the one-time Python download can be slow) ---------- */
+const statusEl = () => document.getElementById("status");
+const slowTimer = setTimeout(() => {
+  if (!pyReady) statusEl().innerHTML = "⏳ Downloading Python + NumPy… first load can take 20–40s on a slower connection (it's cached after this).";
+}, 12000);
+const verySlowTimer = setTimeout(() => {
+  if (!pyReady) statusEl().innerHTML = "⏳ Still loading… if it never finishes, an ad-blocker or restrictive network may be blocking the CDN — try another browser or network.";
+}, 40000);
+// main.py calls this if Python itself fails to start, so errors are visible instead of a frozen screen.
+window.onPyError = function (msg) {
+  pyReady = true;
+  clearTimeout(slowTimer); clearTimeout(verySlowTimer);
+  const s = statusEl();
+  s.innerHTML = "⚠️ Python failed to start: " + msg;
+  s.style.color = "#ff6b6b";
+};
+
 /* ---------- canvas setup ---------- */
 function resetCanvas() {
   ctx.fillStyle = "#000";
@@ -177,6 +194,7 @@ buildBars();                            // show empty bars at startup
 /* ---------- Python readiness handshake (called from main.py) ---------- */
 window.onPyReady = function (acc) {
   pyReady = true;
+  clearTimeout(slowTimer); clearTimeout(verySlowTimer);
   const status = document.getElementById("status");
   status.innerHTML = `🐍 Python + NumPy ready — model is ${(acc * 100).toFixed(1)}% accurate`;
   status.classList.add("ready");
