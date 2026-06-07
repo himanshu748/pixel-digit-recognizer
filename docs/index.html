@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixel Digit Recognizer — Python in your browser</title>
+  <meta name="description" content="A handwritten-digit recognizer whose neural network runs entirely in your browser with Python (NumPy) via PyScript. No server." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
+</head>
+<body>
+  <div class="scanlines"></div>
+
+  <header>
+    <div class="kicker">★ Python · NumPy · PyScript ★</div>
+    <h1>Pixel Digit Recognizer</h1>
+    <p class="tagline">Draw a number and a neural network guesses it — running <b>100% in your browser</b> with real Python. No server anywhere.</p>
+  </header>
+
+  <main>
+    <section class="panel draw-panel">
+      <canvas id="draw" width="280" height="280"></canvas>
+      <div class="controls">
+        <button id="clear" disabled>✏️ Clear</button>
+        <button id="example" disabled>🎲 Try an example</button>
+      </div>
+      <p class="hint">Draw a digit 0–9 with your mouse or finger</p>
+    </section>
+
+    <section class="panel result-panel">
+      <div class="pred-wrap">
+        <div id="pred" class="pred">–</div>
+        <div id="sure" class="sure">Booting Python…</div>
+      </div>
+      <div id="bars" class="bars"></div>
+      <div class="seen-wrap">
+        <span class="seen-label">what the network sees →</span>
+        <canvas id="seen" width="28" height="28"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span id="status" class="status">Booting Python + NumPy… (first load takes a few seconds)</span>
+    <div class="badges">🐍 100% Python in your browser · ⚡ no backend · 🎯 97.8% test accuracy</div>
+    <div class="links">
+      <a href="https://github.com/himanshu748/pixel-digit-recognizer" target="_blank" rel="noopener noreferrer">View the code on GitHub</a>
+    </div>
+  </footer>
+
+  <!-- Browser side: drawing + UI -->
+  <script src="./app.js"></script>
+  <!-- Python side: the neural network -->
+  <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
+  <script type="py" src="./main.py" config="./pyscript.toml"></script>
+</body>
+</html>
