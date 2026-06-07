@@ -1,5 +1,5 @@
 """Sanity check: reload the EXPORTED weights.json and reproduce the exact
-forward pass main.py runs in the browser, to make sure JSON round-trip +
+forward pass model.py runs in the browser, to make sure JSON round-trip +
 center-of-mass logic still classifies MNIST correctly."""
 import gzip, json, os, struct
 import numpy as np

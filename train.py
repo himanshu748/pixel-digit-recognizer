@@ -4,9 +4,9 @@ train.py - Train a tiny neural network on MNIST using only NumPy.
 This is the "offline" half of the project. It:
   1. Downloads the MNIST handwritten-digit dataset.
   2. Trains a 2-layer fully-connected network (784 -> 64 -> 10) from scratch.
-  3. Saves the learned weights to web/weights.json so the SAME math can run
-     in the browser via PyScript.
-  4. Saves a handful of real test digits to web/examples.json for the
+  3. Saves the learned weights to docs/weights.json so the SAME math can run
+     in the browser via Pyodide.
+  4. Saves a handful of real test digits to docs/examples.json for the
      "Try an example" button in the demo.
 
 No TensorFlow, no PyTorch, no scikit-learn. Just NumPy + a little math.
