@@ -8,10 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="preconnect" href="https://pyscript.net" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
-  <link rel="stylesheet" href="https://pyscript.net/releases/2024.11.1/core.css" />
+  <link rel="stylesheet" href="./style.css?v=3" />
 </head>
 <body>
   <div class="scanlines"></div>
@@ -53,10 +51,9 @@
     </div>
   </footer>
 
-  <!-- Browser side: drawing + UI -->
-  <script src="./app.js"></script>
-  <!-- Python side: the neural network -->
-  <script type="module" src="https://pyscript.net/releases/2024.11.1/core.js"></script>
-  <script type="py" src="./main.py" config="./pyscript.toml"></script>
+  <!-- Python runtime (WebAssembly), loaded straight from the CDN -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+  <!-- Browser side: drawing, UI, and booting Python -->
+  <script src="./app.js?v=3"></script>
 </body>
 </html>

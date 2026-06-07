@@ -1,6 +1,6 @@
 /* app.js — the browser side: smooth drawing, turning the drawing into a
-   28x28 image, and rendering the results. The actual recognition happens in
-   Python (main.py). */
+   28x28 image, booting Python (Pyodide), and rendering the results.
+   The actual recognition happens in Python (model.py). */
 
 const SIZE = 280;                       // on-screen canvas is 280x280
 const canvas = document.getElementById("draw");
@@ -12,16 +12,16 @@ let drawing = false;
 let lastX = 0, lastY = 0;
 let pyReady = false;
 let examples = null;
+let pyodide = null;                     // the Python runtime, once loaded
 
 /* ---------- loading feedback (the one-time Python download can be slow) ---------- */
 const statusEl = () => document.getElementById("status");
 const slowTimer = setTimeout(() => {
   if (!pyReady) statusEl().innerHTML = "⏳ Downloading Python + NumPy… first load can take 20–40s on a slower connection (it's cached after this).";
-}, 12000);
+}, 15000);
 const verySlowTimer = setTimeout(() => {
   if (!pyReady) statusEl().innerHTML = "⏳ Still loading… if it never finishes, an ad-blocker or restrictive network may be blocking the CDN — try another browser or network.";
-}, 40000);
-// main.py calls this if Python itself fails to start, so errors are visible instead of a frozen screen.
+}, 45000);
 window.onPyError = function (msg) {
   pyReady = true;
   clearTimeout(slowTimer); clearTimeout(verySlowTimer);
@@ -29,6 +29,38 @@ window.onPyError = function (msg) {
   s.innerHTML = "⚠️ Python failed to start: " + msg;
   s.style.color = "#ff6b6b";
 };
+
+/* ---------- boot Python with Pyodide (WebAssembly), straight from the CDN ---------- */
+async function bootPython() {
+  try {
+    statusEl().innerHTML = "🐍 Booting Python (Pyodide)…";
+    pyodide = await loadPyodide();
+    statusEl().innerHTML = "📦 Loading NumPy…";
+    await pyodide.loadPackage("numpy");
+    statusEl().innerHTML = "🧠 Loading the model…";
+    const code = await (await fetch("./model.py?v=3")).text();
+    pyodide.runPython(code);
+    const weightsText = await (await fetch("./weights.json?v=3")).text();
+    pyodide.globals.set("WEIGHTS_JSON", weightsText);
+    pyodide.runPython("load_weights(WEIGHTS_JSON)");
+    const acc = (JSON.parse(weightsText).test_accuracy) || 0;
+    onReady(acc);
+  } catch (err) {
+    window.onPyError(String(err && err.message ? err.message : err));
+  }
+}
+
+function onReady(acc) {
+  pyReady = true;
+  clearTimeout(slowTimer); clearTimeout(verySlowTimer);
+  const status = statusEl();
+  status.innerHTML = `🐍 Python + NumPy ready — model is ${(acc * 100).toFixed(1)}% accurate`;
+  status.classList.add("ready");
+  document.getElementById("sure").textContent = "Draw a digit!";
+  document.getElementById("example").removeAttribute("disabled");
+  document.getElementById("clear").removeAttribute("disabled");
+  tryExample();                         // show it working immediately
+}
 
 /* ---------- canvas setup ---------- */
 function resetCanvas() {
@@ -45,7 +77,7 @@ function clearAll() {
   resetCanvas();
   document.getElementById("pred").textContent = "–";
   document.getElementById("sure").textContent = pyReady ? "Draw a digit!" : "Booting Python…";
-  buildBars();             // reset bars to empty
+  buildBars();
   seenCtx.clearRect(0, 0, 28, 28);
 }
 
@@ -86,11 +118,10 @@ canvas.addEventListener("pointerleave", endStroke);
 /* ---------- turn the drawing into a 28x28 image (MNIST-style) ---------- */
 function getDrawing() {
   const src = ctx.getImageData(0, 0, SIZE, SIZE).data;
-  // Find the bounding box of the ink (white pixels on black).
   let minX = SIZE, minY = SIZE, maxX = 0, maxY = 0, found = false;
   for (let y = 0; y < SIZE; y++) {
     for (let x = 0; x < SIZE; x++) {
-      if (src[(y * SIZE + x) * 4] > 30) {       // R channel
+      if (src[(y * SIZE + x) * 4] > 30) {
         found = true;
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
@@ -102,9 +133,7 @@ function getDrawing() {
   if (!found) return null;
 
   const bw = maxX - minX + 1, bh = maxY - minY + 1;
-  const longSide = Math.max(bw, bh);
-  // MNIST fits the digit into a 20px box centered in a 28x28 frame.
-  const scale = 20 / longSide;
+  const scale = 20 / Math.max(bw, bh);
   const dw = bw * scale, dh = bh * scale;
 
   const tmp = document.createElement("canvas");
@@ -123,10 +152,11 @@ function getDrawing() {
 
 /* ---------- ask Python, then render ---------- */
 function predict() {
-  if (!pyReady || !window.pyPredict) return;
+  if (!pyReady || !pyodide) return;
   const arr = getDrawing();
   if (!arr) return;
-  const res = JSON.parse(window.pyPredict(arr));
+  pyodide.globals.set("PIXELS", arr);
+  const res = JSON.parse(pyodide.runPython("predict(PIXELS)"));
   render(res);
 }
 
@@ -167,7 +197,7 @@ function drawSeen(seen) {
 /* ---------- "Try an example" (real held-out MNIST test digits) ---------- */
 async function tryExample() {
   if (!examples) {
-    const r = await fetch("./examples.json");
+    const r = await fetch("./examples.json?v=3");
     examples = (await r.json()).digits;
   }
   const pick = examples[Math.floor(Math.random() * examples.length)];
@@ -186,21 +216,8 @@ async function tryExample() {
   predict();
 }
 
-/* ---------- buttons ---------- */
+/* ---------- buttons + go ---------- */
 document.getElementById("clear").addEventListener("click", clearAll);
 document.getElementById("example").addEventListener("click", tryExample);
-buildBars();                            // show empty bars at startup
-
-/* ---------- Python readiness handshake (called from main.py) ---------- */
-window.onPyReady = function (acc) {
-  pyReady = true;
-  clearTimeout(slowTimer); clearTimeout(verySlowTimer);
-  const status = document.getElementById("status");
-  status.innerHTML = `🐍 Python + NumPy ready — model is ${(acc * 100).toFixed(1)}% accurate`;
-  status.classList.add("ready");
-  document.getElementById("sure").textContent = "Draw a digit!";
-  document.getElementById("example").removeAttribute("disabled");
-  document.getElementById("clear").removeAttribute("disabled");
-  // Show it working immediately with a real test digit.
-  tryExample();
-};
+buildBars();
+bootPython();
