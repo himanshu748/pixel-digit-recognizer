@@ -76,6 +76,9 @@
   .code-wrap:hover .copy-btn{opacity:1;}
   .copy-btn:hover{background:var(--purple); color:#fff;}
   .copy-btn.copied{background:var(--green); color:#06281c; border-color:var(--green); opacity:1;}
+  pre.terminal{background:#0a0a14; color:var(--green); border:1px solid var(--border);
+    border-radius:8px; padding:1rem 1.2rem; margin:1.2rem 0; box-shadow:4px 4px 0 #07061a;
+    font-family:"JetBrains Mono",monospace; font-size:.85rem; overflow:auto;}
 </style>
 </head>
 <body>
@@ -242,7 +245,13 @@ for epoch in range(EPOCHS):
     print(f"epoch {epoch+1}: {(preds == y_val).mean()*100:.1f}% val acc")</code></pre>
   <p class="note"><b>What the loop does:</b> instead of using all 55,000 images at once, we go in <strong>mini-batches</strong> of 128 and take a small step after each — that's <em>stochastic gradient descent</em>. The <code>v…</code> variables add <strong>momentum</strong>: each update keeps a bit of the previous direction, like a ball rolling downhill, so it builds speed instead of zig-zagging. And <code>lr * (DECAY ** epoch)</code> shrinks the step size over time — big strides early, gentle ones near the end — so we settle into a good spot. Each epoch we print validation accuracy so we can watch it climb.</p>
 
-  <p>On my laptop it finishes in <strong>under 10 seconds</strong> and reaches about <strong>97.8% accuracy</strong> on digits it has never seen. Not bad for ~50,000 numbers in a couple of arrays!</p>
+  <p>Run <code>python train.py</code> and you'll watch it learn — validation accuracy climbs every epoch:</p>
+  <pre class="terminal">epoch  1: 96.0% val acc
+epoch  5: 97.5% val acc
+epoch 10: 97.9% val acc
+epoch 18: 98.2% val acc
+epoch 25: 98.3% val acc</pre>
+  <p>On my laptop the whole thing finishes in <strong>under 10 seconds</strong> and lands at about <strong>97.8% accuracy</strong> on the held-out <em>test</em> set — digits it never trained on. Not bad for ~50,000 numbers in a couple of arrays!</p>
   <blockquote><p>💡 <strong>Why so small?</strong> A 64-neuron network keeps the saved weights tiny (~470 KB). That matters in Step 3 — we ship those weights to the browser, and nobody likes waiting on a fat download.</p></blockquote>
 
   <hr/>
@@ -426,7 +435,13 @@ function showPrediction(pred, probs) {
   <hr/>
 
   <h2>🚀 Step 5: Ship it free on GitHub Pages</h2>
-  <p>Because there's <strong>no backend</strong>, deploying is almost embarrassingly easy. Put the web files in a <code>docs/</code> folder, push to GitHub, then:</p>
+  <h3>▶️ First, test it locally</h3>
+  <p>Pyodide <em>fetches</em> <code>model.py</code> and <code>weights.json</code> over the network, so you <strong>can't</strong> just double-click <code>index.html</code> — a <code>file://</code> page isn't allowed to fetch files. Serve the <code>docs/</code> folder over HTTP instead:</p>
+  <pre><code class="language-bash">python -m http.server -d docs 8000
+# then open http://localhost:8000</code></pre>
+  <p>Draw a few digits to confirm it works — then let's put it online. 🌐</p>
+  <h3>☁️ Deploy to GitHub Pages</h3>
+  <p>Because there's <strong>no backend</strong>, deploying is almost embarrassingly easy. Push the <code>docs/</code> folder to GitHub, then:</p>
   <ul>
     <li>Go to your repo's <strong>Settings → Pages</strong></li>
     <li>Source: <strong>Deploy from a branch</strong></li>
