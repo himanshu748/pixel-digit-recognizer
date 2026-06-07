@@ -1,6 +1,0 @@
-# Tell PyScript which Python packages to load and which files to copy into
-# the browser's virtual filesystem.
-packages = ["numpy"]
-
-[files]
-"./weights.json" = "weights.json"
