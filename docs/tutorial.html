@@ -56,6 +56,16 @@
   .files a{font-family:"JetBrains Mono",monospace; font-size:.92em; color:var(--gold);
     border-bottom:1px dotted var(--gold); overflow-wrap:anywhere;}
   .files a:hover{color:var(--pink); border-color:var(--pink);}
+  .code-wrap{position:relative; margin:1.2rem 0;}
+  .code-wrap pre{margin:0;}
+  .copy-btn{position:absolute; top:10px; right:10px;
+    font-family:"JetBrains Mono",monospace; font-size:.72rem; letter-spacing:.5px;
+    color:var(--ink); background:#2a2550; border:1px solid var(--border);
+    border-radius:5px; padding:.3rem .65rem; cursor:pointer; opacity:.7;
+    transition:opacity .15s, background .15s, color .15s;}
+  .code-wrap:hover .copy-btn{opacity:1;}
+  .copy-btn:hover{background:var(--purple); color:#fff;}
+  .copy-btn.copied{background:var(--green); color:#06281c; border-color:var(--green); opacity:1;}
   blockquote{background:rgba(167,139,250,.08); border-left:5px solid var(--gold);
     border-radius:6px; padding:.8rem 1.1rem; margin:1.4rem 0; color:#e7e3ff;}
   blockquote p{margin:.3rem 0;}
@@ -422,6 +432,38 @@ function showPrediction(pred, probs) {
 
 </div>
 <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-<script>hljs.highlightAll();</script>
+<script>
+  hljs.highlightAll();
+  // Add a copy-to-clipboard button to every code block.
+  document.querySelectorAll('pre').forEach(pre => {
+    const code = pre.querySelector('code');
+    if (!code) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'code-wrap';
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', async () => {
+      const text = code.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        try { document.execCommand('copy'); } catch (_) {}
+        ta.remove();
+      }
+      btn.textContent = 'Copied ✓';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+    });
+    wrap.appendChild(btn);
+  });
+</script>
 </body>
 </html>
