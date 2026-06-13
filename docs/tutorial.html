@@ -119,6 +119,13 @@
   details.deep h3{margin-top:1.6rem;}
 
   .bridge{font-weight:800; color:var(--gold); font-size:1.05rem; margin:1.6rem 0 .4rem;}
+  /* --- filename tab above a code block --- */
+  .filename{display:inline-block; font-family:"JetBrains Mono",monospace; font-size:.76rem;
+    font-weight:600; letter-spacing:.3px; color:var(--gold); background:#0c0a20;
+    border:1px solid var(--border); border-bottom:none; padding:.4rem .9rem;
+    border-radius:8px 8px 0 0; margin:1.4rem 0 0; max-width:100%;}
+  .filename + .code-wrap, .filename + pre{margin-top:0;}
+  .filename + .code-wrap pre, .filename + pre{border-top-left-radius:0;}
 </style>
 </head>
 <body>
@@ -181,11 +188,13 @@
 
   <ol class="steps">
     <li><b>Grab the code.</b> Clone it (or click the green <b>Code → Download ZIP</b> button on GitHub and unzip):
-      <pre><code class="language-bash">git clone https://github.com/himanshu748/pixel-digit-recognizer.git
+      <div class="filename">▶ Terminal</div>
+  <pre><code class="language-bash">git clone https://github.com/himanshu748/pixel-digit-recognizer.git
 cd pixel-digit-recognizer</code></pre>
     </li>
     <li><b>Serve the <code>docs/</code> folder.</b> You can't just double-click the HTML (more on <em>why</em> in a moment), so start Python's built-in static server:
-      <pre><code class="language-bash">python -m http.server -d docs 8000</code></pre>
+      <div class="filename">▶ Terminal</div>
+  <pre><code class="language-bash">python -m http.server -d docs 8000</code></pre>
     </li>
     <li><b>Open it and draw.</b> Go to <code>http://localhost:8000</code>. Give it a few seconds the first time (it's downloading the Python runtime, we'll get to that) then the status line flips to <em>"Python + NumPy ready."</em> Now scribble a digit <strong>0-9</strong>, or tap <strong>🎲 Try an example</strong>.</li>
   </ol>
@@ -204,8 +213,23 @@ cd pixel-digit-recognizer</code></pre>
     <figcaption>A 5, called with 100% confidence. The bars are the network's probability for every digit; the little square on the right is <em>exactly</em> what the network sees.</figcaption>
   </figure>
 
+  <h3>A quick map of the files 🗂️</h3>
+  <p>Everything the browser needs lives in one <code>docs/</code> folder (that is exactly what GitHub Pages serves), plus a single training script. Here is the whole project, and from here on <strong>every code block is tagged with the file it belongs to</strong>:</p>
+  <div class="filename">🗂️ project structure</div>
+  <pre><code class="language-text">pixel-digit-recognizer/
+  train.py          # (Bonus) trains the network, writes docs/weights.json
+  docs/             # this folder IS the website
+    index.html      # the page: a &lt;canvas&gt; plus two &lt;script&gt; tags
+    app.js          # the hands: drawing, building the 28x28 image, calling Python
+    model.py        # the brain: the NumPy neural network (runs in your browser)
+    weights.json    # the trained brain, loaded by model.py (ships in the repo)
+    style.css       # the pixel / retro styling
+    examples.json   # a few real MNIST digits for the "Try an example" button</code></pre>
+  <p class="note"><b>The two files to care about</b> are <code>docs/model.py</code> (the network itself) and <code>docs/app.js</code> (the browser glue that draws, shrinks the image, and calls Python). The rest is the page, the styling, and the saved weights.</p>
+
   <h3>① Turning your scribble into what the network sees</h3>
   <p>The network was trained on <strong>MNIST</strong> digits: small, centered, white-on-black, about 20px tall inside a 28×28 frame. Your 280×280 doodle looks nothing like that, so before anything else, JavaScript reshapes it to match. We find the bounding box of your ink, scale it down, and re-center it in a fresh 28×28 canvas:</p>
+  <div class="filename">📄 docs/app.js</div>
   <pre><code class="language-javascript">function getDrawing() {
   const px = ctx.getImageData(0, 0, 280, 280).data;
   let minX = 280, minY = 280, maxX = 0, maxY = 0, found = false;
@@ -237,6 +261,7 @@ cd pixel-digit-recognizer</code></pre>
 
   <h3>② The forward pass: 784 numbers → a guess</h3>
   <p>Now the brain. The recognizer is just <strong>NumPy and a little math</strong>. Three layers: <strong>784 inputs</strong> (one per pixel) → <strong>64 hidden neurons</strong> → <strong>10 outputs</strong> (one per digit). This file, <code>model.py</code>, is the entire network that runs in your browser:</p>
+  <div class="filename">📄 docs/model.py</div>
   <pre><code class="language-python">import json, numpy as np
 
 _W = {}
@@ -261,6 +286,7 @@ def predict(pixels):
   <p>That's genuinely the whole recognizer. The "intelligence" is entirely in those four arrays (<code>W1, b1, W2, b2</code>), which is exactly what <code>weights.json</code> holds. (Where do <em>they</em> come from? That's the optional <a href="#scratch">Bonus</a> below.)</p>
 
   <p>One small helper does a lot of heavy lifting. MNIST digits are always centered, so we shift whatever you draw so its <strong>center of mass</strong> lands in the middle of the frame, which makes the model <em>way</em> more forgiving about where on the canvas you scribble:</p>
+  <div class="filename">📄 docs/model.py</div>
   <pre><code class="language-python">def center_of_mass(img):
     total = img.sum()
     if total &lt;= 0:
@@ -274,11 +300,13 @@ def predict(pixels):
 
   <h3>③ The mind-bender: that was real Python, in your browser</h3>
   <p>Here's the trick that makes the whole thing possible. <a href="https://pyodide.org/" target="_blank" rel="noopener noreferrer">Pyodide</a> is a full build of Python compiled to <strong>WebAssembly</strong>: it runs real Python (<em>including NumPy</em>) right inside the browser, with no server. We load it from a CDN with two lines:</p>
+  <div class="filename">📄 docs/app.js</div>
   <pre><code class="language-javascript">const pyodide = await loadPyodide();      // download + start Python (one time)
 await pyodide.loadPackage("numpy");        // yes, real NumPy, in the browser</code></pre>
   <p class="note"><b>What these do:</b> <code>loadPyodide()</code> downloads and starts the WebAssembly build of Python, and that's the few-second wait on first load. <code>loadPackage("numpy")</code> adds NumPy on top. Both come from the CDN and get cached, so every later visit is basically instant.</p>
   <blockquote><p>⏳ <strong>That first-load wait</strong> is the one-time Python + NumPy download (~10-15 MB). That's why we show a friendly "Booting Python…" message, and why you saw it in Step 1. After that it's cached and snappy.</p></blockquote>
   <p>Then we hand our <code>model.py</code> to Python, feed it the weights, and wire the canvas to it. This next bit is the punchline. <strong>JavaScript calling Python</strong>:</p>
+  <div class="filename">📄 docs/app.js</div>
   <pre><code class="language-javascript">pyodide.runPython(await (await fetch("./model.py")).text());   // define predict()
 const weights = await (await fetch("./weights.json")).text();
 pyodide.globals.set("WEIGHTS_JSON", weights);
@@ -313,7 +341,8 @@ function predict() {
     </ul>
     <p>Other options: the <a href="https://yann.lecun.com/exdb/mnist/" target="_blank" rel="noopener noreferrer">original MNIST site</a> (sometimes down), or <a href="https://www.kaggle.com/datasets/oddrationale/mnist-in-csv" target="_blank" rel="noopener noreferrer">MNIST in CSV on Kaggle</a> if you'd rather work with CSVs.</p>
     <p>The files use a simple binary format called <strong>IDX</strong>, a tiny header, then the raw pixel bytes. Here's the whole "download + load into NumPy" routine:</p>
-    <pre><code class="language-python">import gzip, struct, urllib.request
+    <div class="filename">📄 train.py</div>
+  <pre><code class="language-python">import gzip, struct, urllib.request
 import numpy as np
 
 BASE = "https://ossci-datasets.s3.amazonaws.com/mnist/"
@@ -348,7 +377,8 @@ print(X_train.shape, X_test.shape)    # (60000, 784) (10000, 784)</code></pre>
     <p class="note"><b>What's happening:</b> every IDX file starts with a short header. <code>struct.unpack("&gt;IIII", ...)</code> reads four big-endian integers (a magic number, the image count, rows, columns); labels just have an 8-byte header we skip. After that it's raw pixel bytes, so <code>np.frombuffer</code> slurps them into an array. We <code>reshape</code> so each row is one flattened image (28 × 28 = <strong>784</strong> values) and divide by 255 to turn 0-255 pixels into tidy <strong>0-1</strong> numbers, which networks train on far more happily.</p>
 
     <p>Two small bits of prep. Our labels are digits like <code>7</code>, but the network outputs 10 probabilities, so we <strong>one-hot</strong> them (<code>7</code> → <code>[0,0,0,0,0,0,0,1,0,0]</code>). And we hold back 5,000 training images as a <strong>validation set</strong> so we can pick the best model honestly:</p>
-    <pre><code class="language-python">def one_hot(y, k=10):
+    <div class="filename">📄 train.py</div>
+  <pre><code class="language-python">def one_hot(y, k=10):
     out = np.zeros((y.size, k))
     out[np.arange(y.size), y] = 1
     return out
@@ -360,7 +390,8 @@ Y_train = one_hot(y_train)</code></pre>
 
     <h3>🏗️ Build the network</h3>
     <p>No frameworks, just arrays. We start the weights as small random numbers and the biases at zero:</p>
-    <pre><code class="language-python">INPUT, H, OUTPUT = 784, 64, 10
+    <div class="filename">📄 train.py</div>
+  <pre><code class="language-python">INPUT, H, OUTPUT = 784, 64, 10
 W1 = np.random.randn(INPUT, H) * np.sqrt(2 / INPUT)   # He init
 b1 = np.zeros(H)
 W2 = np.random.randn(H, OUTPUT) * np.sqrt(2 / H)
@@ -368,7 +399,8 @@ b2 = np.zeros(OUTPUT)</code></pre>
     <p class="note"><b>Why not just zeros?</b> If every weight started equal, every neuron would learn the exact same thing, which is useless. So we randomize them. The <code>* np.sqrt(2 / inputs)</code> part is <strong>He initialization</strong>: it scales those random numbers so the signal keeps a healthy size as it flows through ReLU layers (too big and it explodes, too small and it vanishes). One line, but it makes training noticeably smoother.</p>
 
     <p>The <strong>forward pass</strong> is the same one from Step 2, but written to run on a whole batch of images at once:</p>
-    <pre><code class="language-python">def relu(z):
+    <div class="filename">📄 train.py</div>
+  <pre><code class="language-python">def relu(z):
     return np.maximum(0.0, z)        # the "squiggle": kills negatives
 
 def softmax(z):
@@ -384,7 +416,8 @@ def forward(X):
 
     <h3>🎓 Teach it (backprop + training loop)</h3>
     <p>To learn, we compare the guess to the truth and nudge every weight toward a better answer. This is <strong>backpropagation</strong>:</p>
-    <pre><code class="language-python">def backward(xb, yb):
+    <div class="filename">📄 train.py</div>
+  <pre><code class="language-python">def backward(xb, yb):
     z1, a1, p = forward(xb)          # yb = one-hot labels for this batch
     m = xb.shape[0]
 
@@ -406,7 +439,8 @@ def forward(X):
     </ul>
 
     <p>Now the training loop: pass over the data ~25 times in small batches, stepping the weights downhill after each batch, with a little <em>momentum</em> and learning-rate decay:</p>
-    <pre><code class="language-python">LR, MOMENTUM, DECAY, BATCH, EPOCHS = 0.2, 0.9, 0.92, 128, 25
+    <div class="filename">📄 train.py</div>
+  <pre><code class="language-python">LR, MOMENTUM, DECAY, BATCH, EPOCHS = 0.2, 0.9, 0.92, 128, 25
 vW1 = vb1 = vW2 = vb2 = 0            # momentum "velocities"
 
 for epoch in range(EPOCHS):
@@ -426,7 +460,8 @@ for epoch in range(EPOCHS):
     <p class="note"><b>What the loop does:</b> instead of using all 55,000 images at once, we go in <strong>mini-batches</strong> of 128 and take a small step after each, that's <em>stochastic gradient descent</em>. The <code>v…</code> variables add <strong>momentum</strong>: each update keeps a bit of the previous direction, like a ball rolling downhill, so it builds speed instead of zig-zagging. And <code>lr * (DECAY ** epoch)</code> shrinks the step size over time, big strides early, gentle ones near the end. Each epoch we print validation accuracy so we can watch it climb.</p>
 
     <p>Run <code>python train.py</code> and you'll watch it learn, validation accuracy climbs every epoch:</p>
-    <pre class="terminal">epoch  1: 96.0% val acc
+    <div class="filename">▶ Terminal output</div>
+  <pre class="terminal">epoch  1: 96.0% val acc
 epoch  5: 97.5% val acc
 epoch 10: 97.9% val acc
 epoch 18: 98.2% val acc
@@ -435,7 +470,8 @@ epoch 25: 98.3% val acc</pre>
 
     <h2>💾 Save the brain</h2>
     <p>Training gives us four arrays: <code>W1, b1, W2, b2</code>. That's literally everything the network "knows." Pour them into the JSON file the browser loads in Step 2:</p>
-    <pre><code class="language-python">import json
+    <div class="filename">📄 train.py</div>
+  <pre><code class="language-python">import json
 
 weights = {
     "test_accuracy": 0.978,
@@ -461,15 +497,6 @@ json.dump(weights, open("docs/weights.json", "w"))</code></pre>
     <li>Branch: <strong>main</strong>, folder: <strong>/docs</strong> → <strong>Save</strong></li>
   </ul>
   <p>Wait a minute, and your handwriting recognizer is live at <code>https://&lt;you&gt;.github.io/&lt;repo&gt;/</code>, free, forever, with zero servers to babysit. 🎉</p>
-
-  <h3>📁 The finished project</h3>
-  <pre><code class="language-text">your-project/
-  train.py            # Bonus (optional): train the net and export weights.json
-  docs/
-    index.html        # loads Pyodide + app.js, holds the canvas
-    app.js            # the drawing, the UI, and booting Python (Step 2)
-    model.py          # the neural network that runs in the browser (Step 2)
-    weights.json      # the trained brain (ships in the repo)</code></pre>
 
   <hr/>
 
